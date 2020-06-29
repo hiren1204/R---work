@@ -1,0 +1,60 @@
+---
+title: "week_1_Practical_Machine_Learning_spam_dataset"
+output: html_document
+---
+
+```
+
+Load "kernlab" package and load "spam" dataset
+```{r}
+library(kernlab)
+data(spam)
+```
+
+
+head of "spam" dataset 
+
+```{r}
+head(spam)
+```
+
+
+
+
+ **density plot**
+	
+on the **x-axis** is the **frequency**
+that with which, **your**, appeared in the email. 
+	
+And on the **y-axis** is the **density**, or the 
+**number of times the that frequency appears** amongst the emails.
+
+```{r}
+  
+plot(density(spam$your[spam$type == "nonspam"]), col="blue",main = "", xlab = "frequency of 'your' ")
+lines(density(spam$your[spam$type == "spam"]) , col = "red")
+```
+
+In plot we can see that  frequency of "your" word is less than 0.5 so we will consider that if frequency of "your " word is greater than 0.5 then that is a "spam" mail 
+
+
+
+Now we will predict the accurance of "your" 
+if accurance of "your" > 0.5 then "spam" othewise "nonspam"
+
+```{r}
+prediction <- ifelse(spam$your >0.5 , "spam" , "nonspam")
+table(prediction , spam$type) / length(spam$type)
+```
+
+In prediction table the value of nonspam and spam is 0.459 and 0.292 respectivly 
+so our acuuracy of prediction is 
+```{r}
+(0.459+0.292)*100
+```
+percent
+
+
+
+
+

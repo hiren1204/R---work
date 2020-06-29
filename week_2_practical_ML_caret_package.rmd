@@ -1,0 +1,518 @@
+---
+title: "week_2_Practical_Machine_Learning_caret_package"
+output: html_document
+---
+
+# The Caret Package
+
+```{r}
+library(caret)
+library(kernlab)
+data(spam)
+```
+
+now we will split the data into training set(75%) and testing set(25%)
+```{r}
+inTrain <- createDataPartition(y=spam$type, p=0.5, list = FALSE)
+training <- spam[inTrain,]
+testing <-  spam[-inTrain,]
+```
+
+total number of instances
+```{r}
+dim(spam)
+```
+
+after spliting number of instances are 
+```{r}
+dim(training)
+```
+```{r}
+dim(testing)
+```
+```{r}
+dim(inTrain)
+```
+
+
+
+dot(.) means use all the prdictor to predit the type 
+```{r}
+set.seed(32343)
+modelFit <-  train(type ~ . , data = training , method = "glm")
+modelFit
+```
+so it is using 57 prdictor to predict whcih class 
+
+
+
+after fit the model we can look at the model 
+```{r}
+modelFit$finalModel
+```
+
+
+after FITING the model we can predict on new data that is TESTING data 
+```{r}
+prediction <- predict(modelFit, newdata = testing)
+prediction
+```
+
+now create a CONFUSION matrix 
+
+```{r}
+confusionMatrix(prediction,testing$type)
+
+```
+so it is showing that our model's accuracy is 93%
+
+# Data Slicing
+
+one way is 
+inTrain <- createDataPartition(y=spam$type, p=0.75, list = FALSE)
+training <- spam[inTrain,]
+testing <-  spam[-inTrain,]
+
+
+second way is K-Fold
+```{r}
+set.seed(32323)
+folds <- createFolds( y = spam$type , k= 10 , list = TRUE , returnTrain = TRUE) 
+sapply(folds, length)
+
+```
+returnTrain = TRUE 
+so it will return the training set
+
+this will check in 1st fold which elements are included 
+```{r}
+folds[[1]][1:10]
+```
+
+so change the value of 
+returnTrain = FLASE
+```{r}
+set.seed(32323)
+folds <- createFolds( y = spam$type , k= 10 , list = TRUE , returnTrain = FALSE) 
+sapply(folds, length)
+```
+so it will return the test set only 
+
+and look at the testing sets 1st fold element
+```{r}
+folds[[1]][1:10]
+```
+
+
+### resapmling
+If you want to do resampling or bootstrapping instead of cross validation 
+
+```{r}
+set.seed(32324)
+folds <-  createResample(y = spam$type , times = 10, list = TRUE)
+sapply(folds, length)
+
+
+```
+
+this will repeat some elements(instances) because it is re-sampling from the replacment value 
+```{r}
+folds[[1]][1:10]
+```
+
+
+
+for analyzing forecasting then you neeed TIME SLICING
+
+```{r}
+set.seed(32324)
+#creating a vector of 1000 value
+tme <-  1:1000 
+folds <-createTimeSlices( y = tme , initialWindow = 20 , horizon = 10)
+names(folds)
+```
+
+```{r}
+folds$train[[1]]
+folds$test[[1]]
+```
+
+
+# Training Options
+
+in OneNote 
+
+# Plotting Predictors
+
+ISLR contain Wage dataset
+```{r}
+library(ISLR)
+library(ggplot2)
+library(caret)
+```
+
+```{r}
+data(Wage)
+summary(Wage)
+```
+
+now we will split our data 70% to trainig and 30% to testing
+```{r}
+iTrain <- createDataPartition( y = Wage$wage , p = 0.7 , list = FALSE)
+training <- Wage[iTrain,]
+testing <- Wage[-iTrain,]
+dim(training);dim(testing)
+```
+
+featurePlot
+```{r}
+featurePlot(x = training[,c("age","education","jobclass")],
+            y = training$wage ,
+            plot = "pairs" )
+```
+
+qplot for age vs wage from ggplot2
+```{r}
+qplot(age, wage , data= training )
+```
+
+there are two cluster 
+so to identify that what is the realtionship 
+we will plot with color 
+
+```{r}
+qplot(age, wage ,color = jobclass, data= training )
+
+```
+
+now we will apply regression line to see the relationship 
+```{r}
+qq <- qplot(age, wage , color = education , data= training )
+qq + geom_smooth(method = "lm" , formula = y ~ x )
+
+```
+
+```{r}
+library("Hmisc")
+
+cutWage <- cut2(training$wage , g = 3)
+table(cutWage)
+
+```
+
+now we can use that groups to plot 
+```{r}
+p1 <- qplot( cutWage , age  , data = training , fil = cutWage  , geom = c("boxplot"))
+p1
+```
+
+for more clarity we will plot dots (jitter )  above the box plot
+```{r}
+p2 <- qplot( cutWage , age  , data = training , fil = cutWage  , geom = c("boxplot","jitter"))
+p2
+
+```
+
+we can use cut to see the tables aslo
+```{r}
+t1 <- table(cutWage , training$jobclass)
+t1
+```
+```{r}
+
+prop.table(t1,1)
+```
+pass 1 to see proportion of each row 
+pass 2 to see proportion of each column
+
+
+now plot the density plot
+```{r}
+qplot(wage , colour = education , data = training , geom = "density")
+```
+
+
+# Processing
+
+```{r}
+library(kernlab)
+library(caret)
+data(spam)
+```
+
+```{r}
+
+inTrain <- createDataPartition(y=spam$type, p=0.75, list = FALSE)
+training <- spam[inTrain,]
+testing <-  spam[-inTrain,]
+hist(training$capitalAve , main = "" , xlab = " Average of capital run length")
+```
+```{r}
+mean(training$capitalAve)
+```
+
+```{r}
+sd(training$capitalAve)
+```
+
+SD is to high 
+so we will apply STANDARDIZTION
+
+```{r}
+trainCapAve <-  training$capitalAve
+trainCapAveS <- (trainCapAve - mean(trainCapAve))/sd(trainCapAve)
+mean(trainCapAveS)
+```
+```{r}
+sd(trainCapAveS)
+```
+
+we have to do it for test set also 
+but we have to use the mean from the training set, and the standard deviation from the training set, to standardize the testing set values. 
+
+```{r}
+testCapAve <-  testing$capitalAve
+testCapAveS <- (testCapAve - mean(trainCapAve))/sd(trainCapAve)
+mean(testCapAveS)
+```
+
+```{r}
+sd(testCapAveS)
+```
+
+we can perfrom standardizing using preProcessing  function from caret
+
+```{r}
+preObj <-  preProcess(training[,-58], method = c("center","scale"))
+trainCapAveS <-  predict(preObj , training[,-58])$capitalAve 
+mean(trainCapAveS)
+```
+```{r}
+sd(trainCapAveS)
+```
+
+
+Now we will apply preProcessing to test set
+we will apply same object which we apply for train set
+
+```{r}
+testCapAveS <- predict(preObj, testing[,-58])$capitalAve
+mean(testCapAveS)
+
+```
+
+
+```{r}
+sd(testCapAveS)
+```
+
+We can preProcessing as an argument also
+```{r}
+set.seed(32324)
+modelFit <-  train(type ~ . , data = training , preProcess = c("center","scale"), method = "glm")
+modelFit
+```
+
+
+standardizing using BOX COX transformation 
+```{r}
+preObj <- preProcess(training[,-58] , method = c("BoxCox"))
+trainCapAveS <-  predict(preObj, training[,-58])$capitalAve
+hist(trainCapAveS)
+```
+
+```{r}
+qqnorm(trainCapAveS)
+
+```
+
+
+### imputing data
+
+If you have some missing data you can impute them using KNN 
+
+```{r}
+#we select the capitalAve
+training$capAve <- training$capitalAve
+#and generate random value and set equal to NA
+selectNA <-  rbinom(dim(training)[1] , size = 1 ,prob = 0.05)==1
+#so capAve is exactly like capitalAve but it has a subset of values that are missing
+training$capAve[selectNA] <- NA
+
+
+
+#so now we will handle this missing values 
+#impute ans standardize 
+preObj <-  preProcess(training[,-58], method = "knnImpute")
+capAve <-  predict(preObj,training[,-58])$capAve
+
+#standardize true values
+capAveTruth <- training$capitalAve
+capAveTruth <-  (capAveTruth - mean(capAveTruth))/sd(capAveTruth)
+```
+ 
+ 
+ 
+ 
+ # Covariant Creation 
+ 
+ 
+```{r}
+iTrain <- createDataPartition( y = Wage$wage , p = 0.7 , list = FALSE)
+training <- Wage[iTrain,]
+testing <- Wage[-iTrain,]
+dim(training);dim(testing)
+```
+
+
+```{r}
+table(training$jobclass)
+```
+it has qualitative variable 
+and they are hard to predict 
+so we will convert it to qualitative variable 
+
+```{r}
+dummies <-  dummyVars(wage ~ jobclass , data = training)
+prediction <-  predict(dummies , newdata = training)
+head(prediction)
+
+```
+
+So,
+1 for Industrial and
+2 for Information job
+
+
+If some variable has no meaning then we will remove them
+(( The variable which are not likely to predict. So remove those PREDICTOR ))
+
+```{r}
+nsv <-  nearZeroVar(training , saveMetrics = TRUE)
+nsv
+
+```
+region has nsv TRUE so wee will discard it 
+
+```{r}
+library(splines)
+bsBias <- bs(training$age , df = 3)
+bsBias
+```
+
+ bs() is used to 
+to create straight line to curvy line with data
+
+fiiting curve with splines 
+```{r}
+#first we will create a linear model 
+lm1 <- lm(wage ~ bsBias , data = training)
+plot(training$age , training$wage , pch=19 , cex = 0.5)
+points(training$age , predict(lm1, newdata = training) , col = "red" , pch = 19 , cex = 0.5)
+```
+
+now we have to do same for test set
+```{r}
+predict(bsBias , age=testing$age)
+```
+
+
+
+# Preprocessing with Principal Components Analysis (PCA)
+
+corelated Prediction
+
+```{r}
+
+iTrain <- createDataPartition( y = spam$type , p = 0.75 , list = FALSE)
+training <- spam[iTrain,]
+testing <- spam[-iTrain,]
+
+#calculate the corelaiton b/w all the columns  who have high corelation and similar to eaxh other 
+M <- abs(cor(training[,-58]))
+
+#corelation to itself is 1 so we make it 0
+diag(M) <- 0
+
+#which of these variable has high corelation with eachother 
+which(M > 0.8 , arr.ind = T)
+```
+
+
+```{r}
+names(spam)[c(34,32)]
+
+```
+
+
+```{r}
+#So we are taking highly corelated variable 34 and 32
+smallspam <-  spam[c(32,34)]
+
+#Then we will apply principal components 
+prComp <-  prcomp(smallspam)
+plot(prComp$x[,1],prComp$x[,2])
+
+#First look like adding the variable and 2nd like subtracting the variable 
+```
+
+```{r}
+prComp$rotation
+
+```
+
+ So basically, in this particular case the first principal component, the one that explains the most variability is just adding the two variables up. And the variable that explains the second most variability in these two variables is the taking the difference between the two variables. 
+ 
+ 
+
+
+```{r}
+#color = black if you are not spam    and red if spam
+typeColor <- ((spam$type == "spam") * 1 + 1)
+
+#THIS WILL calculate the principal component for whole data set
+#log10 is use for that graph look like gaussian 
+prComp <- prcomp(log10(spam[,-58]+1))
+
+
+plot(prComp$x[,1],prComp$x[,2], col = typeColor , xlab = "PC1" , ylab= "PC2")
+
+```
+ 
+ 
+ PCA with caret 
+ 
+```{r}
+preProc <-  preProcess(log10(spam[,-58]+1) , method = "pca" , pcaComp = 2)
+spamPC <-  predict(preProc,log10(spam[,-58]+1))
+plot(spamPC[,1],spamPC[,2],col= typeColor)
+```
+ 
+preprocessing with PCA in oneNote SS
+```{r}
+
+```
+
+
+ALTERNATIVE 
+# DO ALL IN ONE FOR PCS 
+this is not working
+```{r}
+#modelFit <- train(training$type ~ ., method = "glm" , preProcess = "pca" , data = training)
+#confusionMatrix(testing$type , predict(modelFit,testing))
+```
+
+
+
+
+
+# Predicting with Regression      
+in oneNote 
+
+```{r}
+
+```
+
+
+
+

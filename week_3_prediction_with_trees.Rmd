@@ -1,0 +1,303 @@
+---
+title: "week_3_prediction_with_trees"
+output: html_document
+---
+
+
+# predicting with trees
+
+loaded a IRIS dataset
+```{r}
+library(ggplot2)
+data("iris")
+names(iris)
+```
+
+```{r}
+table(iris$Species)
+
+```
+
+we will split our trainig and testing data 
+```{r}
+iTrain <-  createDataPartition(y = iris$Species,
+                               p = 0.7 , 
+                               list = FALSE)
+
+training <- iris[iTrain,]
+testing <- iris[-iTrain,]
+
+```
+```{r}
+dim(training)
+```
+```{r}
+dim(testing)
+```
+
+```{r}
+summary(iris)
+```
+
+
+ploting a graph to see the different Species ,  
+how they are classify 
+```{r}
+qplot(training$Petal.Width , training$Sepal.Width , colour = training$Species)
+```
+
+now we will fit the model 
+```{r}
+library(caret)
+ 
+modelFit <- train(Species ~ . , data = training , method = "rpart")
+
+#to print the final model
+print(modelFit$finalModel)
+```
+
+we can also make a plot for classification tree
+```{r}
+#this well plot only tree
+plot(modelFit$finalModel , uniform = TRUE , main = "Classifiaction Tree" )
+
+#for text on tree 
+text(modelFit$finalModel , use.n = T , all = T , cex = .8)
+
+```
+
+we can plot with rattle packahe also
+
+```{r}
+library(rattle)
+fancyRpartPlot(modelFit$finalModel)
+```
+
+now we will predit on out testing data 
+```{r}
+predict(modelFit , newdata = testing )
+```
+
+
+
+
+# BAGGING
+
+
+```{r}
+library(faraway)
+data(ozone)
+summary(ozone)
+```
+
+```{r}
+head(ozone)
+```
+
+```{r}
+ctreeBag$fit
+```
+
+```{r}
+ctreeBag$pred
+```
+
+
+```{r}
+ctreeBag$aggregate
+```
+
+
+
+
+
+# RANDOM FOREST
+
+
+```{r}
+library(caret)
+library(randomForest)
+library(ggplot2)
+data("iris")
+
+iTrain <-  createDataPartition(y = iris$Species,
+                               p = 0.7 , 
+                               list = FALSE)
+
+training <- iris[iTrain,]
+testing <- iris[-iTrain,]
+
+modelFit <- train(Species ~ . , method = "rf" , data = training , prox = TRUE)
+
+modelFit$finalModel
+```
+
+
+to see the center of the class
+```{r}
+library(randomForest)
+irisP <- classCenter(training[,c(3,4)] , training$Species , modelFit$finalModel$prox)
+
+irisP <- as.data.frame(irisP)
+
+p <- qplot(Petal.Width , Petal.Length , col = Species , data= training)
+p+geom_point(aes(x= Petal.Width , y = Petal.Length , col = irisP$Species)  , data = irisP)
+```
+
+
+predicting new values
+```{r}
+pred <- predict(modelFit , testing )
+testing$predRight <- pred == testing$Species
+table(pred , testing$Species)
+```
+
+so in tablw we can see that we miss 2 
+1 in versicolor and 1 in virginia 
+
+we will plot and see that 2 missed values
+
+```{r}
+qplot(Petal.Width, Petal.Length , colour = predRight , data = testing , main ="newdata prediction")
+```
+
+
+
+# Combining Predictors 
+
+```{r}
+library(ISLR)
+data(Wage)
+
+library(ggplot2)
+library(caret)
+
+
+```
+
+```{r}
+Wage
+
+```
+```{r}
+Wage <- subset(Wage , select = c(year , age , maritl , race, education , region , jobclass , health, health_ins , wage))
+Wage
+```
+
+
+here we are spliting out data into 3 parts 
+- validation 
+- training
+- testing
+```{r}
+iBuild <- createDataPartition(y = Wage$wage , p = 0.7 , list = FALSE)
+
+dataBuild <- Wage[iBuild , ]
+validation <- Wage[-iBuild, ]
+
+iTrain <- createDataPartition(y = dataBuild$wage , p = 0.7 , list = FALSE)
+
+training <- dataBuild[iTrain , ]
+testing <- dataBuild[-iTrain, ]
+
+```
+
+```{r}
+dim(training)
+```
+```{r}
+dim(testing)
+```
+```{r}
+dim(validation)
+```
+
+now we will create two differeent model with different METHODS
+
+```{r}
+mod1 <- train(wage ~ year + age+ education +race + maritl +jobclass +health +health_ins, 
+              method = "glm" ,
+              data = training  )
+
+```
+```{r}
+mod2 <- train(wage ~ . , data = training , method = "rf" , number = 3)
+```
+
+now we will predict on each model without combining
+```{r}
+pred1 <- predict(mod1 , testing)
+pred2 <- predict(mod2 , testing)
+```
+```{r}
+qplot(pred1, pred2, color = wage , data = testing )
+```
+in this plot we can see that both are same but at some point they predict different
+
+```{r}
+
+```
+
+now we will combine both predictors
+```{r}
+predDF <- data.frame(pred1 , pred2 , wage = testing$wage)
+
+#combine model 
+CombModelFit <-  train(wage ~ . , method= "glm", data=predDF)
+
+#combine predictors
+combpred <- predict(CombModelFit , predDF)
+
+
+```
+
+testing error (RMSE)
+```{r}
+sqrt(sum((pred1 - testing$wage)^2))
+
+```
+
+```{r}
+sqrt(sum((pred2 - testing$wage)^2))
+```
+
+```{r}
+sqrt(sum((combpred - testing$wage)^2))
+```
+
+combine predictors error is less compare to other two
+
+
+
+now we will predict on validation dataset
+
+```{r}
+pred1v <- predict(mod1, validation)
+pred2v <- predict(mod2, validation)
+
+predVDF <- data.frame(pred1 = pred1v , pred2 = pred2v)
+
+combPredV <- predict(CombModelFit , predVDF)
+```
+
+now see the errors
+```{r}
+sqrt(sum((pred1v - validation$wage)^2))
+```
+
+```{r}
+sqrt(sum((pred2v - validation$wage)^2))
+
+```
+
+```{r}
+sqrt(sum((combPredV - validation$wage)^2))
+```
+
+so combine prediction on validation set also shows that RMSE is less than other two
+
+
+
+
+
+
